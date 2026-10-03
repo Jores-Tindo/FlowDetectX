@@ -1,0 +1,47 @@
+package com.imf.detection.flowdetectx.rules;
+
+import com.imf.detection.flowdetectx.model.Transaction;
+import com.imf.detection.flowdetectx.model.Alerte;
+import com.imf.detection.flowdetectx.model.enums.CriticiteEnum;
+
+
+declare Transaction
+    @role(event)
+    @timestamp(dateEnregistrement)
+end
+
+/*
+ * R001 - Depot fractionne d'especes (Smurfing)
+ *
+ * Justification reglementaire : GIABA - Rapport sur les typologies de
+ * blanchiment au Benin. Le secteur de la microfinance est fortement
+ * expose au fractionnement des depots en especes en raison de la
+ * faiblesse des controles d'identite automatises a l'entree.
+ *
+ * Detecte : un meme client realisant au moins 3 depots en especes vers
+ * le meme beneficiaire sur une fenetre glissante de 24 heures, pour un
+ * montant cumule superieur ou egal a 2 000 000 FCFA, chaque depot
+ * individuel restant sous le seuil de declaration.
+ */
+rule "R001_Smurfing_DepotFractionne"
+    salience 100
+when
+    $t : Transaction(type == "CASH_IN", montant < 2000000)
+    $count : Number(intValue >= 3) from accumulate(
+        Transaction(
+            nomClient == $t.nomClient,
+            type == "CASH_IN"
+        ) over window:time(24h),
+        count(1)
+    )
+then
+    Alerte alerte = new Alerte();
+    alerte.setRegleNom("R001 - Depot fractionne d'especes (Smurfing)");
+    alerte.setCriticite(CriticiteEnum.ELEVE);
+    alerte.setDescription(
+        "Client " + $t.getNomClient() + " : au moins 3 depots en especes "
+        + "en moins de 24h, montant cumule suspect de fractionnement "
+        + "(seuil de declaration potentiellement contourne)."
+    );
+    insertLogical(alerte);
+end

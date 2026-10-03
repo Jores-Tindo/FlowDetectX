@@ -1,0 +1,41 @@
+package com.imf.detection.flowdetectx.rules;
+
+import com.imf.detection.flowdetectx.model.Transaction;
+import com.imf.detection.flowdetectx.model.Alerte;
+import com.imf.detection.flowdetectx.model.enums.CriticiteEnum;
+
+declare Transaction
+    @role(event)
+    @timestamp(dateEnregistrement)
+end
+/*
+ * R004 - Explosion de frequence transactionnelle (Velocity Trigger)
+ *
+ * Justification sectorielle : ANSSFD - mise en garde contre
+ * l'utilisation detournee des comptes d'epargne ordinaires a des fins
+ * commerciales ou criminelles, amplifiee par les interconnexions
+ * techniques directes entre les IMF et les operateurs GSM (MTN, Moov).
+ *
+ * Detecte : un meme compte enregistrant plus de 15 transactions sur une
+ * fenetre glissante de 1 heure, signalant une activite anormale
+ * (location de compte, collecte de fonds illegale type "Ponzi").
+ */
+rule "R004_VelocityTrigger_ExplosionFrequence"
+    salience 90
+when
+    $t : Transaction($client : nomClient)
+    $count : Number(intValue > 15) from accumulate(
+        Transaction(nomClient == $client) over window:time(1h),
+        count(1)
+    )
+then
+    Alerte alerte = new Alerte();
+    alerte.setRegleNom("R004 - Explosion de frequence (Velocity Trigger)");
+    alerte.setCriticite(CriticiteEnum.MOYEN);
+    alerte.setDescription(
+        "Compte " + $client + " : plus de 15 transactions enregistrees "
+        + "en 1 heure, frequence incompatible avec un usage normal "
+        + "(risque de location de compte ou de collecte illegale)."
+    );
+    insertLogical(alerte);
+end

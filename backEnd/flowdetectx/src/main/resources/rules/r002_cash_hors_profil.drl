@@ -1,0 +1,33 @@
+package com.imf.detection.flowdetectx.rules;
+
+import com.imf.detection.flowdetectx.model.Transaction;
+import com.imf.detection.flowdetectx.model.Alerte;
+import com.imf.detection.flowdetectx.model.enums.CriticiteEnum;
+
+/*
+ * R002 - Operation cash hors profil
+ *
+ * Justification reglementaire : Instruction BCEAO N 233/07/2024, qui
+ * harmonise et abaisse le seuil de limitation des paiements et
+ * reglements en especes a 5 000 000 FCFA au sein de l'UMOA. Au-dela de
+ * ce montant, les instruments scripturaux ou electroniques traçables
+ * deviennent obligatoires.
+ *
+ * Detecte : tout versement en especes (CASH_IN) dont le montant
+ * unitaire depasse strictement 5 000 000 FCFA.
+ */
+rule "R002_CashHorsProfil_SeuilBCEAO"
+    salience 100
+when
+    $t : Transaction(type == "CASH_IN", montant > 5000000)
+then
+    Alerte alerte = new Alerte();
+    alerte.setRegleNom("R002 - Operation cash hors profil");
+    alerte.setCriticite(CriticiteEnum.ELEVE);
+    alerte.setDescription(
+        "Versement en especes de " + $t.getMontant() + " FCFA par "
+        + $t.getNomClient() + ", superieur au seuil de 5 000 000 FCFA "
+        + "fixe par l'Instruction BCEAO N 233/07/2024."
+    );
+    insertLogical(alerte);
+end

@@ -1,0 +1,3 @@
+# Paramètres de simulation PaySim
+paysim.api.base-url=http://localhost:8080/api
+# Ajoute ici les clés de propriétés sans tes valeurs de production secrètes

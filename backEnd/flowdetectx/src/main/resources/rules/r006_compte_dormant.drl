@@ -1,0 +1,41 @@
+package com.imf.detection.flowdetectx.rules;
+
+import com.imf.detection.flowdetectx.model.Transaction;
+import com.imf.detection.flowdetectx.model.Alerte;
+import com.imf.detection.flowdetectx.model.ProfilClient;
+import com.imf.detection.flowdetectx.model.enums.CriticiteEnum;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+
+/*
+ * R006 - Reactivation brutale d'un compte dormant
+ *
+ * Justification empirique : typologie documentee par la CENTIF-BJ
+ * concernant la complicite interne ou l'usurpation d'identite. Les
+ * fraudeurs ciblent des comptes d'IMF abandonnes ou inactifs (titulaire
+ * parfois decede ou ayant demenage) pour y faire transiter des flux
+ * frauduleux, la surveillance interne y etant presumee moins stricte.
+ *
+ * Detecte : un compte inactif depuis plus de 180 jours (6 mois) dont
+ * l'activite reprend soudainement avec une transaction de montant
+ * superieur a 500 000 FCFA.
+ */
+rule "R006_CompteDormant_Reactivation"
+    salience 80
+when
+    $t : Transaction($client : nomClient, montant > 500000)
+    $profil : ProfilClient(
+        nomClient == $client,
+        eval(ChronoUnit.DAYS.between(derniereActivite, LocalDateTime.now()) > 180)
+    )
+then
+    Alerte alerte = new Alerte();
+    alerte.setRegleNom("R006 - Reactivation brutale d'un compte dormant");
+    alerte.setCriticite(CriticiteEnum.MOYEN);
+    alerte.setDescription(
+        "Compte " + $client + " : inactif depuis plus de 6 mois, "
+        + "reactivation soudaine avec une transaction de " + $t.getMontant()
+        + " FCFA (risque d'usurpation ou de complicite interne)."
+    );
+    insertLogical(alerte);
+end

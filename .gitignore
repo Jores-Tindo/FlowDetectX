@@ -1,0 +1,29 @@
+# ===== SECRETS - JAMAIS SUR GITHUB =====
+**/application.properties
+**/application.yml
+**/application-prod.properties
+**/application-prod.yml
+**/.env
+**/secrets.dart
+**/key.properties
+**/google-services.json
+**/GoogleService-Info.plist
+
+
+# ===== FICHIERS DE BUILD / GENERES =====
+# Spring Boot
+**/target/
+**/*.jar
+**/run.log
+
+# Flutter
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+
+# ===== IDE / SYSTEME =====
+**/.idea/
+**/.vscode/
+**/*.iml
+**/.DS_Store

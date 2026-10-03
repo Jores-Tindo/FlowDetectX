@@ -1,0 +1,38 @@
+package com.imf.detection.flowdetectx.rules;
+
+import com.imf.detection.flowdetectx.model.Transaction;
+import com.imf.detection.flowdetectx.model.Alerte;
+import com.imf.detection.flowdetectx.model.ProfilClient;
+import com.imf.detection.flowdetectx.model.enums.CriticiteEnum;
+
+/*
+ * R005 - Depassement du revenu declare (KYC Ecart)
+ *
+ * Justification reglementaire : Loi Uniforme LBC/FT de l'UMOA, qui
+ * impose aux institutions de veiller a ce que les operations effectuees
+ * soient coherentes avec la connaissance du client (KYC), son profil
+ * de risque et l'origine de ses revenus.
+ *
+ * Detecte : une transaction dont le montant est superieur a 10 fois le
+ * revenu mensuel declare par le client lors de son inscription,
+ * signalant une incoherence manifeste avec sa situation economique.
+ */
+rule "R005_KycEcart_RevenuDeclare"
+    salience 80
+when
+    $t : Transaction($montant : montant, $client : nomClient)
+    $profil : ProfilClient(
+        nomClient == $client,
+        (revenuDeclare * 10) < $montant
+    )
+then
+    Alerte alerte = new Alerte();
+    alerte.setRegleNom("R005 - Depassement du revenu declare (KYC Ecart)");
+    alerte.setCriticite(CriticiteEnum.MOYEN);
+    alerte.setDescription(
+        "Client " + $client + " : transaction de " + $montant
+        + " FCFA, manifestement incoherente avec le revenu declare au "
+        + "KYC (" + $profil.getRevenuDeclare() + " FCFA/mois)."
+    );
+    insertLogical(alerte);
+end

@@ -1,0 +1,41 @@
+package com.imf.detection.flowdetectx.rules;
+
+import com.imf.detection.flowdetectx.model.Transaction;
+import com.imf.detection.flowdetectx.model.Alerte;
+import com.imf.detection.flowdetectx.model.enums.CriticiteEnum;
+
+/*
+ * R003 - Transit rapide de fonds (Pass-through)
+ *
+ * Justification empirique : Rapport CENTIF-BJ sur les typologies de
+ * cybercriminalite. Les "Gaymen" (cybercriminels locaux) utilisent des
+ * comptes d'IMF ou des portefeuilles mobiles de complices pour faire
+ * transiter l'argent issu d'escroqueries a l'avance de frais avant que
+ * la victime ne porte plainte.
+ *
+ * Detecte : un retrait (CASH_OUT) survenant moins de 10 minutes apres
+ * un depot (CASH_IN) d'un montant equivalent sur le meme compte,
+ * caracterisant l'utilisation du compte comme simple plateforme de
+ * transit, sans rationalite economique apparente.
+ */
+rule "R003_PassThrough_TransitRapide"
+    salience 100
+when
+    $sortie : Transaction(type == "CASH_OUT")
+    $entree : Transaction(
+        nomClient == $sortie.nomClient,
+        type == "CASH_IN",
+        montant >= ($sortie.montant * 0.9),
+        this after[0s, 10m] $sortie
+    )
+then
+    Alerte alerte = new Alerte();
+    alerte.setRegleNom("R003 - Transit rapide de fonds (Pass-through)");
+    alerte.setCriticite(CriticiteEnum.ELEVE);
+    alerte.setDescription(
+        "Compte de " + $sortie.getNomClient() + " : fonds recus puis "
+        + "retires en quasi-totalite en moins de 10 minutes, sans "
+        + "justification economique apparente (compte de passage)."
+    );
+    insertLogical(alerte);
+end
